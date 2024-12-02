@@ -1,0 +1,3 @@
+images_*
+**.pyc
+.DS_Store
