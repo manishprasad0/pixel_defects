@@ -88,7 +88,7 @@ def add_bad_pixels(dir_raw_images, dir_bad_images, hot_indices, dead_indices, ho
 
     fm = FitsManager(dir_raw_images, depth=1)
 
-    dir_bad_images = "./images_all_guiding_bad_pixels"
+    dir_bad_images = "./images_all_guiding_hot_cold_warm_pixels"
     os.makedirs(dir_bad_images, exist_ok=True)
 
     for i in range(len(fm.all_images)):
@@ -99,7 +99,7 @@ def add_bad_pixels(dir_raw_images, dir_bad_images, hot_indices, dead_indices, ho
         # Set dead pixel values
         raw_image[dead_indices] = dead_pixel_values   
 
-        raw_output_filename = os.path.join(dir_bad_images, f"image_light_bad_pixels_{i+1}.fits")
+        raw_output_filename = os.path.join(dir_bad_images, f"image_light_hcw_pixels_{i+1}.fits")
 
         # Save the raw image in "images_generated" directory
         fits.writeto(raw_output_filename, raw_image, overwrite=True, header=fits.Header([
@@ -115,7 +115,7 @@ def add_bad_pixels(dir_raw_images, dir_bad_images, hot_indices, dead_indices, ho
         # Set dead pixel values
         raw_image[dead_indices] = dead_pixel_values   
 
-        raw_output_filename = os.path.join(dir_bad_images, f"image_dark_bad_pixels_{i+1}.fits")
+        raw_output_filename = os.path.join(dir_bad_images, f"image_dark_hcw_pixels_{i+1}.fits")
 
         # Save the raw image in "images_generated" directory
         fits.writeto(raw_output_filename, raw_image, overwrite=True, header=fits.Header([
@@ -124,3 +124,73 @@ def add_bad_pixels(dir_raw_images, dir_bad_images, hot_indices, dead_indices, ho
         ]))
 
     print(f"Light and dark images with bad pixels have been modified and saved in {dir_bad_images}")
+
+def add_telegraphic_pixels(dir_raw_images, dir_bad_images, telegraphic_percentage, interval, telegraphic_pixel_values=0):
+    """
+    Introduce telegraphic pixels into an image while ensuring no overlap in indices and setting value limits for telegraphic pixels.
+    
+    Parameters:
+        dir_raw_images (str): Directory containing the raw images.
+        dir_bad_images (str): Directory to save the images with telegraphic pixels.
+        telegraphic_indices (tuple): Indices of the telegraphic pixels.
+        telegraphic_pixel_values (np.ndarray): Values for the telegraphic pixels.
+
+    Returns:
+        np.ndarray: Saves the images with telegraphic pixels in the specified directory.
+    """
+
+    fm = FitsManager(dir_raw_images, depth=1)
+    modified_image = FITSImage(fm.all_images[0]).data  # 1024x1024 image filled with ones
+    
+    dir_bad_images = "./images_all_guiding_bad_pixels"
+    os.makedirs(dir_bad_images, exist_ok=True)
+
+    total_pixels = modified_image.size
+    num_telegraphic_pixels = int(total_pixels * (telegraphic_percentage / 100))
+    telegraphic_indices = np.random.choice(total_pixels, num_telegraphic_pixels, replace=False)
+    telegraphic_indices = np.unravel_index(telegraphic_indices, modified_image.shape)
+
+    for i in range(len(fm.all_images)):
+    
+        raw_image = FITSImage(fm.all_images[i]).data  # 1024x1024 image filled with ones
+        
+        if i%interval == 0 and i != 0:
+            # Set hot pixel values
+            raw_image[telegraphic_indices] = telegraphic_pixel_values
+            # Set dead pixel values
+            raw_image[telegraphic_indices] = telegraphic_pixel_values   
+
+        raw_output_filename = os.path.join(dir_bad_images, f"image_light_guiding_bad_pixels_{i+1}.fits")
+
+        # Save the raw image in "images_generated" directory
+        fits.writeto(raw_output_filename, raw_image, overwrite=True, header=fits.Header([
+            (Telescope.keyword_image_type, Telescope.keyword_light_images),
+            (Telescope.keyword_observation_date, FITSImage(fm.all_images[i]).date.strftime('%Y-%m-%dT%H:%M:%S.%f'))
+        ]))
+
+    for i in range(len(fm.all_darks)):
+    
+        raw_image = FITSImage(fm.all_darks[i]).data  # 1024x1024 image filled with ones
+
+        if i%interval == 0 and i != 0:
+            # Set hot pixel values
+            raw_image[telegraphic_indices] = telegraphic_pixel_values
+            # Set dead pixel values
+            raw_image[telegraphic_indices] = telegraphic_pixel_values
+
+        raw_output_filename = os.path.join(dir_bad_images, f"image_dark_guiding_bad_pixels_{i+1}.fits")
+
+        # Save the raw image in "images_generated" directory
+        fits.writeto(raw_output_filename, raw_image, overwrite=True, header=fits.Header([
+            (Telescope.keyword_image_type, Telescope.keyword_dark_images),
+            (Telescope.keyword_observation_date, FITSImage(fm.all_darks[i]).date.strftime('%Y-%m-%dT%H:%M:%S.%f'))
+        ]))
+
+
+
+
+
+
+
+
+

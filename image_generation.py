@@ -30,7 +30,7 @@ def warm_pixels(camera, exposure_time = 10, mean_warm = 45.6+5, std_warm = 9.3, 
     return warm, scaled_data
 
 
-def generate_light_images(ra, dec, exposure_time, base_date, num_pixels_shift, num_light_images, seeing_data, camera, telescope, dir_base_images_light = 'images_generated_light_guiding'):
+def generate_light_images(ra, dec, exposure_time, base_date, num_pixels_shift, num_light_images, seeing_data, camera, telescope, dir_base_images_light = 'images_light_guiding_warm_pixels'):
     """
     Generate an image of the sky at a given RA and Dec.
 
@@ -76,7 +76,7 @@ def generate_light_images(ra, dec, exposure_time, base_date, num_pixels_shift, n
         light += warm
         light = light
 
-        raw_output_filename = os.path.join(dir_base_images_light, f"raw_image_light_{i+1}.fits")
+        raw_output_filename = os.path.join(dir_base_images_light, f"image_light_guiding_warm_pixels{i+1}.fits")
 
         # Save the raw image in "images_generated" directory
         fits.writeto(raw_output_filename, light, overwrite=True, header=fits.Header([
@@ -84,7 +84,7 @@ def generate_light_images(ra, dec, exposure_time, base_date, num_pixels_shift, n
             (Telescope.keyword_observation_date, curr_date.strftime('%Y-%m-%dT%H:%M:%S.%f'))
         ]))
 
-def generate_dark_images(ra, dec, exposure_time, base_date, num_dark_images, num_light_images, seeing_data, camera, dir_base_images_dark = 'images_generated_dark_guiding'):
+def generate_dark_images(ra, dec, exposure_time, base_date, num_dark_images, num_light_images, seeing_data, camera, dir_base_images_dark = 'images_dark_guiding_warm_pixels'):
     """
     Generate an image of the sky at a given RA and Dec.
 
@@ -120,7 +120,7 @@ def generate_dark_images(ra, dec, exposure_time, base_date, num_dark_images, num
         dark += warm
         dark = dark
 
-        raw_output_filename = os.path.join(dir_base_images_dark, f"raw_image_dark_{i+1}.fits")
+        raw_output_filename = os.path.join(dir_base_images_dark, f"image_dark_guiding_warm_pixels{i+1}.fits")
 
         # Save the raw image in "images_generated" directory
         fits.writeto(raw_output_filename, dark, overwrite=True, header=fits.Header([
@@ -129,7 +129,7 @@ def generate_dark_images(ra, dec, exposure_time, base_date, num_dark_images, num
         ]))
 
 
-def combine_folders(dir_base_images_light, dir_base_images_dark, dir_base_images_all = 'images_all_guiding_pixels'):
+def combine_folders(dir_base_images_light, dir_base_images_dark, dir_base_images_all):
 
     # Directory to save all images
     os.makedirs(dir_base_images_all, exist_ok=True)  # Create directory if it doesn't exist
