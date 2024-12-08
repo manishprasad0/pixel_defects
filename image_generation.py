@@ -6,6 +6,29 @@ from astropy.io import fits
 from prose import Telescope
 from datetime import datetime, timedelta
 import shutil
+from scipy.stats import skewnorm
+
+
+# Generate a skewed distribution
+def warm_pixels(camera, exposure_time = 10, mean_warm = 45.6+5, std_warm = 9.3, skewness_warm = 6, size=10000):
+    base = np.ones((camera.height, camera.width))
+    base += np.random.poisson(base * camera.dark_current * exposure_time)
+
+    # Generate data from a skewed normal distribution
+    data = skewnorm.rvs(a=skewness_warm, size=size)
+    
+    # Scale to match the target standard deviation
+    data_std = np.std(data)
+    scaled_data = data / data_std * std_warm  # Normalize to std=1 and scale to target std
+    
+    # Adjust to match the target mean after skewing
+    scaled_data = scaled_data + (mean_warm - np.mean(scaled_data))
+    scaled_data = scaled_data.reshape(camera.height, camera.width)
+    warm = base + scaled_data
+    warm = warm.astype(np.uint16)
+
+    return warm, scaled_data
+
 
 def generate_light_images(ra, dec, exposure_time, base_date, num_pixels_shift, num_light_images, seeing_data, camera, telescope, dir_base_images_light = 'images_generated_light_guiding'):
     """
@@ -39,12 +62,20 @@ def generate_light_images(ra, dec, exposure_time, base_date, num_pixels_shift, n
     # Directory to save light images
     os.makedirs(dir_base_images_light, exist_ok=True) # Create directory if it doesn't exist
 
+    # Create an image with warm pixels
+    warm, scaled_data = warm_pixels(camera, exposure_time, size=camera.width*camera.height)
+    
     # Generate light images
     for i in range(num_light_images):
         curr_date = base_date + timedelta(seconds=i*exposure_time) #interval between each image = exposure time
         site = cabaret.Site(seeing=seeing_data[i])
 
         light = cabaret.generate_image(random_ras[i], random_decs[i], exposure_time, dateobs=curr_date, camera=camera, site=site)
+        
+        # Add warm pixels to the image
+        light += warm
+        light = light
+
         raw_output_filename = os.path.join(dir_base_images_light, f"raw_image_light_{i+1}.fits")
 
         # Save the raw image in "images_generated" directory
@@ -70,6 +101,9 @@ def generate_dark_images(ra, dec, exposure_time, base_date, num_dark_images, num
     num_pixels_shift : int
         Number of pixels to include in the image.
     """
+    
+    # Create an image with warm pixels
+    warm, scaled_data = warm_pixels(camera, exposure_time, size=camera.width*camera.height)
 
     # Directory to save dark images
     os.makedirs(dir_base_images_dark, exist_ok=True) # Create directory if it doesn't exist
@@ -81,6 +115,11 @@ def generate_dark_images(ra, dec, exposure_time, base_date, num_dark_images, num
         site = cabaret.Site(seeing=seeing_data[i+num_light_images])
         
         dark = cabaret.generate_image(ra, dec, exposure_time, dateobs=curr_date, light=0, camera=camera, site=site)
+
+        # Add warm pixels to the image
+        dark += warm
+        dark = dark
+
         raw_output_filename = os.path.join(dir_base_images_dark, f"raw_image_dark_{i+1}.fits")
 
         # Save the raw image in "images_generated" directory
